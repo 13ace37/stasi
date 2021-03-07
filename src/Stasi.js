@@ -18,26 +18,31 @@ module.exports = class Stasi {
 			this.fetchSettings(settings);
 			this.log("COMMANDS ~ fetching...");
 			this.createCommands();
+			this.Client.leaveDelay = null;
+			this.Client.log = this.log;
 		});
 		this.Client.on("message", message => {
 			this.handleMessage(message);
 		});
 
+		this.Client.voiceLeave = () => {this.Client.voiceChannel.leave(); this.Client.playingSound = false;}
+
 		this.Client.voiceJoinYT = yt => {
 			let ytdl = require("ytdl-core");
 			if (this.Client.playingSound || !ytdl.validateURL(yt)) return;
-			this.log(`SOUNDS ~ playing yt: ${yt}`);
+			this.log(`YOUTUBE ~ playing: ${yt}`);
 			this.Client.playingSound = true;
 			let channel = this.Client.channels.cache.get(this.Client.settings.voiceChannel);
+			this.Client.voiceChannel = channel;
 			channel.join().then((c) => {
 				try {
 					c.play(ytdl(yt), { volume: 0.5 });
 					ytdl.getBasicInfo(yt).then(i=> {
-						this.log(`SOUNDS ~ playing yt: ${i.videoDetails.title}`);
-						setTimeout(() => {channel.leave(); this.Client.playingSound = false;}, i.videoDetails.lengthSeconds * 1000);
+						this.log(`YOUTUBE ~ playing: ${i.videoDetails.title}`);
+						this.Client.leaveDelay = setTimeout(this.Client.voiceLeave, i.videoDetails.lengthSeconds * 1000);
 					});
 				} catch(e) {
-					this.log(`SOUNDS ~ yt error: ${e}`);
+					this.log(`YOUTUBE ~ error: ${e}`);
 					this.Client.playingSound = false;
 					return channel.leave();
 				}
@@ -49,7 +54,8 @@ module.exports = class Stasi {
 			this.log(`SOUNDS ~ playing ${sound}`);
 			this.Client.playingSound = true;
 			let channel = this.Client.channels.cache.get(this.Client.settings.voiceChannel);
-			setTimeout(() => {channel.leave(); this.Client.playingSound = false;}, SoundDuration(sound));
+			this.Client.voiceChannel = channel;
+			this.Client.leaveDelay = setTimeout(this.Client.voiceLeave, SoundDuration(sound));
 			channel.join().then((c) => {c.play(__dirname+ `/sounds/${sound}.mp3`);});
 		}
 
@@ -124,7 +130,14 @@ module.exports = class Stasi {
 				run() {this.Client.voiceJoinYT(this.args[0])}
 			},
 			stop: class extends Command {
-				run() {if (this.Client.playingSound) this.Client.channels.cache.get(this.Client.settings.voiceChannel).leave(); this.Client.playingSound = false;}
+				run() {
+					if (this.Client.playingSound) {
+						this.Client.log("SOUNDS ~ stopped last sound");
+						this.Client.voiceChannel.leave();
+						this.Client.playingSound = false;
+						clearTimeout(this.Client.leaveDelay);
+					} 
+				}
 			},
 
 		}
