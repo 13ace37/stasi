@@ -26,13 +26,19 @@ module.exports = class Stasi {
 		this.Client.voiceJoinYT = yt => {
 			let ytdl = require("ytdl-core");
 			if (this.Client.playingSound || !ytdl.validateURL(yt)) return;
-			this.log(`SOUNDS ~ playing yt ${yt}`);
+			this.log(`SOUNDS ~ playing yt: ${yt}`);
 			this.Client.playingSound = true;
 			let channel = this.Client.channels.cache.get(this.Client.settings.voiceChannel);
 			channel.join().then((c) => {
 				try {
 					c.play(ytdl(yt), { volume: 0.5 });
+					ytdl.getBasicInfo(yt).then(i=> {
+						this.log(`SOUNDS ~ playing yt: ${i.videoDetails.title}`);
+						setTimeout(() => {channel.leave(); this.Client.playingSound = false;}, i.videoDetails.lengthSeconds * 1000);
+					});
 				} catch(e) {
+					this.log(`SOUNDS ~ yt error: ${e}`);
+					this.Client.playingSound = false;
 					return channel.leave();
 				}
 			});

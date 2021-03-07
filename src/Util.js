@@ -1,9 +1,9 @@
-function fixTime(number) {
+var fixTime = number => {
 	if (number < 10) number = '0' + number;
 	return number;
-};
+}
 
-function formatAMPM(date = new Date()) {
+var formatAMPM = (date = new Date()) => {
 	var hours = date.getHours();
 	var minutes = date.getMinutes();
 	var seconds = date.getSeconds();
